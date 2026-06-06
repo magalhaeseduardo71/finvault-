@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FinVault</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,wght@0,300;0,400;0,500;1,300&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #0A0B0D;
+  --bg1:      #101215;
+  --bg2:      #161920;
+  --bg3:      #1E2229;
+  --line:     rgba(255,255,255,0.07);
+  --line2:    rgba(255,255,255,0.12);
+  --text:     #E2E4EA;
+  --muted:    #6B7080;
+  --faint:    #30343E;
+  --acc:      #7EE8A2;
+  --acc2:     #5DD4F0;
+  --warn:     #F0855D;
+  --white:    #FFFFFF;
+  --mono:     'DM Mono', monospace;
+  --sans:     'DM Sans', sans-serif;
+  --r:        10px;
+  --r2:       6px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:15px;min-height:100vh;-webkit-font-smoothing:antialiased}
+
+/* scanline */
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);pointer-events:none;z-index:9999}
+
+/* scrollbar */
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--faint);border-radius:2px}
+
+/* ── LAYOUT ── */
+.shell{display:grid;grid-template-columns:220px 1fr;min-height:100vh}
+
+/* ── SIDEBAR ── */
+.sidebar{background:var(--bg1);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:0}
+.sid-brand{padding:28px 24px 20px;border-bottom:1px solid var(--line)}
+.sid-brand .mark{font-family:var(--mono);font-size:18px;font-weight:500;letter-spacing:-0.5px;color:var(--white)}
+.sid-brand .mark em{color:var(--acc);font-style:normal}
+.sid-brand .sub{font-size:11px;color:var(--muted);margin-top:3px;font-family:var(--mono)}
+
+.sid-nav{padding:16px 12px;flex:1}
+.nav-label{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;color:var(--faint);padding:0 12px;margin:16px 0 6px}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:var(--r2);cursor:pointer;font-size:13px;font-weight:400;color:var(--muted);transition:all .15s;border:none;background:transparent;width:100%;text-align:left}
+.nav-item:hover{color:var(--text);background:var(--bg2)}
+.nav-item.active{color:var(--white);background:var(--bg3)}
+.nav-item .ni{font-size:14px;width:18px;text-align:center}
+.nav-dot{width:5px;height:5px;border-radius:50%;background:var(--acc);margin-left:auto;display:none}
+.nav-item.active .nav-dot{display:block}
+
+.sid-footer{padding:16px 24px;border-top:1px solid var(--line)}
+.sid-footer .dev{font-size:10px;color:var(--faint);font-family:var(--mono)}
+.sid-footer .dev span{color:var(--muted)}
+
+/* ── MAIN ── */
+.main{display:flex;flex-direction:column;overflow:hidden}
+.topbar{padding:20px 32px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;background:var(--bg1)}
+.topbar-title{font-size:15px;font-weight:500;color:var(--white)}
+.topbar-meta{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.fb-pill{display:inline-flex;align-items:center;gap:6px;padding:4px 10px;border-radius:20px;font-size:11px;font-family:var(--mono);border:1px solid var(--line2);color:var(--muted);cursor:pointer;transition:all .15s}
+.fb-pill:hover{border-color:var(--acc);color:var(--acc)}
+.fb-pill .dot{width:6px;height:6px;border-radius:50%;background:var(--faint)}
+.fb-pill.connected .dot{background:var(--acc)}
+.fb-pill.connected{color:var(--acc);border-color:rgba(126,232,162,0.2)}
+
+.content{padding:28px 32px;flex:1;overflow-y:auto}
+
+/* ── PANEL ── */
+.panel{display:none}
+.panel.active{display:block;animation:fadeup .2s ease}
+@keyframes fadeup{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── MONTH NAV ── */
+.month-row{display:flex;align-items:center;gap:0;margin-bottom:24px}
+.month-btn{background:var(--bg2);border:1px solid var(--line);color:var(--muted);width:32px;height:32px;border-radius:var(--r2);cursor:pointer;font-size:14px;transition:all .15s;flex-shrink:0}
+.month-btn:hover{color:var(--text);border-color:var(--line2)}
+.month-name{flex:1;padding:0 16px;font-size:20px;font-weight:300;color:var(--white);letter-spacing:-0.3px}
+.month-name small{font-size:13px;color:var(--muted);font-weight:400;margin-left:6px}
+
+/* ── STAT ROW ── */
+.stat-row{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:24px}
+.stat{background:var(--bg1);border:1px solid var(--line);border-radius:var(--r);padding:16px 18px;position:relative;overflow:hidden}
+.stat::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:var(--stat-c,var(--line2))}
+.stat .s-label{font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:.5px;margin-bottom:8px}
+.stat .s-val{font-family:var(--mono);font-size:22px;font-weight:400;color:var(--white)}
+.stat .s-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.stat-green{--stat-c:var(--acc)}
+.stat-red{--stat-c:var(--warn)}
+.stat-blue{--stat-c:var(--acc2)}
+
+/* ── ACTION ROW ── */
+.action-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px}
+.section-label{font-size:11px;font-family:var(--mono);letter-spacing:1px;text-transform:uppercase;color:var(--muted)}
+
+/* ── BUTTONS ── */
+.btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:var(--r2);font-family:var(--sans);font-size:12px;font-weight:500;cursor:pointer;border:none;transition:all .15s;letter-spacing:.2px}
+.btn-primary{background:var(--acc);color:#050F08}
+.btn-primary:hover{filter:brightness(1.08)}
+.btn-ghost{background:transparent;border:1px solid var(--line2);color:var(--muted)}
+.btn-ghost:hover{color:var(--text);border-color:var(--line2);background:var(--bg2)}
+.btn-danger{background:rgba(240,133,93,0.1);border:1px solid rgba(240,133,93,0.2);color:var(--warn)}
+.btn-danger:hover{background:rgba(240,133,93,0.18)}
+.btn-sm{padding:5px 10px;font-size:11px}
+
+/* ── FORM DRAWER ── */
+.drawer{background:var(--bg1);border:1px solid var(--line2);border-radius:var(--r);padding:20px;margin-bottom:16px;animation:fadeup .2s ease}
+.form-grid{display:grid;gap:12px;margin-bottom:14px}
+.fg2{grid-template-columns:1fr 1fr}
+.fg3{grid-template-columns:1fr 1fr 1fr}
+.fg4{grid-template-columns:1fr 1fr 1fr 1fr}
+.f-label{font-size:10px;letter-spacing:.8px;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:5px;font-family:var(--mono)}
+input,select{width:100%;padding:8px 11px;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);color:var(--text);font-family:var(--sans);font-size:13px;transition:border-color .15s;-webkit-appearance:none}
+input:focus,select:focus{outline:none;border-color:var(--acc)}
+input::placeholder{color:var(--faint)}
+select option{background:var(--bg2)}
+.drawer-footer{display:flex;gap:8px;justify-content:flex-end}
+
+/* ── LIST ── */
+.list{display:flex;flex-direction:column;gap:1px}
+.list-item{display:flex;align-items:center;gap:14px;padding:12px 16px;background:var(--bg1);border-radius:0;border-bottom:1px solid var(--line);transition:background .15s;animation:fadeup .2s ease}
+.list-item:first-child{border-radius:var(--r) var(--r) 0 0}
+.list-item:last-child{border-radius:0 0 var(--r) var(--r);border-bottom:none}
+.list-item:only-child{border-radius:var(--r);border-bottom:none}
+.list-item:hover{background:var(--bg2)}
+.li-line{width:2px;height:32px;border-radius:1px;flex-shrink:0;background:var(--warn)}
+.li-line.income{background:var(--acc)}
+.li-info{flex:1;min-width:0}
+.li-name{font-size:13px;font-weight:500;color:var(--white);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.li-meta{font-size:11px;color:var(--muted);margin-top:2px;font-family:var(--mono)}
+.li-amount{font-family:var(--mono);font-size:14px;color:var(--warn);white-space:nowrap}
+.li-amount.income{color:var(--acc)}
+.tag{display:inline-block;padding:1px 7px;border-radius:3px;font-size:10px;font-family:var(--mono);letter-spacing:.3px}
+.tag-red{background:rgba(240,133,93,.1);color:var(--warn);border:1px solid rgba(240,133,93,.2)}
+.tag-green{background:rgba(126,232,162,.1);color:var(--acc);border:1px solid rgba(126,232,162,.2)}
+.tag-blue{background:rgba(93,212,240,.1);color:var(--acc2);border:1px solid rgba(93,212,240,.2)}
+
+/* ── TOTAL BAR ── */
+.total-line{display:flex;justify-content:space-between;align-items:center;padding:14px 16px;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r);margin-top:10px}
+.total-line .tl-label{font-size:11px;font-family:var(--mono);color:var(--muted);letter-spacing:.5px;text-transform:uppercase}
+.total-line .tl-val{font-family:var(--mono);font-size:16px;font-weight:500}
+
+/* ── BALANCE ── */
+.balance-card{border-radius:var(--r);padding:16px 20px;margin-top:12px;display:flex;align-items:center;gap:16px}
+.balance-card.pos{background:rgba(126,232,162,.05);border:1px solid rgba(126,232,162,.15)}
+.balance-card.neg{background:rgba(240,133,93,.05);border:1px solid rgba(240,133,93,.15)}
+.bc-icon{font-size:24px}
+.bc-val{font-family:var(--mono);font-size:20px;font-weight:400}
+.bc-msg{font-size:12px;color:var(--muted);margin-top:3px;line-height:1.5}
+
+/* ── EMPTY ── */
+.empty{text-align:center;padding:48px 20px;color:var(--faint)}
+.empty .e-icon{font-size:28px;margin-bottom:10px;opacity:.4}
+.empty p{font-size:13px}
+
+/* ── OVERVIEW TABLE ── */
+.ov-table{display:flex;flex-direction:column;gap:1px;margin-top:8px}
+.ov-row{display:flex;align-items:center;padding:10px 16px;background:var(--bg1);cursor:pointer;transition:background .15s;border-bottom:1px solid var(--line);border-radius:0}
+.ov-row:first-child{border-radius:var(--r) var(--r) 0 0}
+.ov-row:last-child{border-bottom:none;border-radius:0 0 var(--r) var(--r)}
+.ov-row:hover{background:var(--bg2)}
+.ov-row .ov-month{flex:1;font-size:13px;color:var(--text)}
+.ov-row .ov-nums{display:flex;gap:20px;font-family:var(--mono);font-size:12px}
+.ov-row.cur .ov-month{color:var(--white);font-weight:500}
+
+/* ── SAVINGS ── */
+.vault-hero{background:var(--bg1);border:1px solid var(--line);border-radius:var(--r);padding:28px;text-align:center;margin-bottom:20px;position:relative;overflow:hidden}
+.vault-hero::before{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);width:200px;height:200px;background:radial-gradient(circle,rgba(126,232,162,.06) 0%,transparent 70%);pointer-events:none}
+.vh-label{font-size:10px;font-family:var(--mono);letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);margin-bottom:10px}
+.vh-amount{font-family:var(--mono);font-size:38px;font-weight:300;color:var(--white);letter-spacing:-1px}
+.vh-amount span{color:var(--acc)}
+.vh-sub{font-size:12px;color:var(--muted);margin-top:8px;font-family:var(--mono)}
+.prog-wrap{height:3px;background:var(--bg3);border-radius:2px;margin:18px 0 6px}
+.prog-fill{height:100%;background:var(--acc);border-radius:2px;transition:width .6s ease}
+.prog-labels{display:flex;justify-content:space-between;font-family:var(--mono);font-size:10px;color:var(--faint)}
+
+/* ── QUOTE ── */
+.quote-block{background:var(--bg1);border:1px solid var(--line);border-left:2px solid var(--acc2);border-radius:var(--r);padding:22px 24px;margin-bottom:18px;cursor:pointer;transition:all .2s}
+.quote-block:hover{border-color:var(--line2);border-left-color:var(--acc2)}
+.q-text{font-size:15px;font-style:italic;line-height:1.75;color:var(--text);font-weight:300;margin-bottom:12px}
+.q-author{font-size:11px;font-family:var(--mono);color:var(--acc2)}
+.q-hint{font-size:10px;color:var(--faint);font-family:var(--mono);float:right;margin-top:-2px}
+.q-counter{font-size:10px;font-family:var(--mono);color:var(--faint);text-align:right;margin-bottom:16px}
+
+/* ── DEPOSIT LOG ── */
+.dep-log{display:flex;flex-direction:column;gap:1px;max-height:280px;overflow-y:auto}
+.dep-entry{display:flex;justify-content:space-between;align-items:center;padding:10px 14px;background:var(--bg1);border-bottom:1px solid var(--line)}
+.dep-entry:first-child{border-radius:var(--r) var(--r) 0 0}
+.dep-entry:last-child{border-bottom:none;border-radius:0 0 var(--r) var(--r)}
+.dep-date{font-family:var(--mono);font-size:11px;color:var(--muted)}
+.dep-val{font-family:var(--mono);font-size:13px;font-weight:500;color:var(--acc)}
+
+/* ── FIREBASE MODAL ── */
+.fb-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px;backdrop-filter:blur(6px)}
+.fb-modal{background:var(--bg1);border:1px solid var(--line2);border-radius:14px;padding:28px;width:100%;max-width:480px;animation:fadeup .25s ease}
+.fb-modal h3{font-size:16px;font-weight:500;color:var(--white);margin-bottom:6px}
+.fb-modal p{font-size:12px;color:var(--muted);margin-bottom:16px;line-height:1.7}
+.fb-modal textarea{width:100%;height:120px;padding:12px;background:var(--bg2);border:1px solid var(--line);border-radius:var(--r2);color:var(--text);font-family:var(--mono);font-size:11px;resize:vertical}
+.fb-modal textarea:focus{outline:none;border-color:var(--acc)}
+.fb-modal-footer{display:flex;gap:8px;justify-content:flex-end;margin-top:12px}
+.fb-status{font-size:11px;color:var(--muted);font-family:var(--mono);margin-top:8px;min-height:16px}
+
+/* ── TOAST ── */
+#toast{position:fixed;bottom:24px;right:24px;z-index:999;background:var(--bg3);border:1px solid var(--line2);border-radius:var(--r2);padding:10px 16px;font-size:12px;font-family:var(--mono);color:var(--text);transform:translateY(12px);opacity:0;transition:all .25s;pointer-events:none}
+#toast.show{transform:translateY(0);opacity:1}
+
+/* ── RESPONSIVE ── */
+@media(max-width:700px){
+  .shell{grid-template-columns:1fr}
+  .sidebar{display:none}
+  .stat-row{grid-template-columns:1fr}
+  .fg2,.fg3,.fg4{grid-template-columns:1fr 1fr}
+  .content{padding:16px 16px 80px}
+  .topbar{padding:14px 16px}
+  .month-row{flex-wrap:wrap;gap:6px}
+  .month-name{font-size:16px}
+}
+/* ── BOTTOM NAV (mobile) ── */
+.bottom-nav{display:none}
+@media(max-width:700px){
+  .bottom-nav{
+    display:flex;position:fixed;bottom:0;left:0;right:0;z-index:100;
+    background:var(--bg1);border-top:1px solid var(--line);
+    padding:8px 0 12px;
+  }
+  .bn-item{
+    flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;
+    border:none;background:transparent;color:var(--muted);cursor:pointer;
+    font-family:var(--sans);font-size:10px;padding:4px 0;transition:color .15s;
+  }
+  .bn-item .bn-icon{font-size:18px;line-height:1}
+  .bn-item.active{color:var(--acc)}
+  .bn-item.active .bn-icon{filter:drop-shadow(0 0 4px rgba(126,232,162,0.4))}
+}
+</style>
+</head>
+<body>
+
+<div class="shell">
+
+  <!-- ── SIDEBAR ── -->
+  <aside class="sidebar">
+    <div class="sid-brand">
+      <div class="mark">Fin<em>Vault</em></div>
+      <div class="sub">gestão financeira</div>
+    </div>
+    <nav class="sid-nav">
+      <div class="nav-label">Principal</div>
+      <button class="nav-item active" onclick="showPanel('despesas',this)">
+        <span class="ni">↓</span> Despesas <span class="nav-dot"></span>
+      </button>
+      <button class="nav-item" onclick="showPanel('receitas',this)">
+        <span class="ni">↑</span> Receitas <span class="nav-dot"></span>
+      </button>
+      <button class="nav-item" onclick="showPanel('resumo',this)">
+        <span class="ni">◈</span> Resumo <span class="nav-dot"></span>
+      </button>
+      <div class="nav-label">Metas</div>
+      <button class="nav-item" onclick="showPanel('poupanca',this)">
+        <span class="ni">⬡</span> Poupança <span class="nav-dot"></span>
+      </button>
+    </nav>
+    <div class="sid-footer">
+      <div class="dev">by <span>Eduardo Magalhães</span></div>
+    </div>
+  </aside>
+
+  <!-- ── MAIN ── -->
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="panelTitle">Despesas</span>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="topbar-meta" id="headerDate">—</span>
+        <button onclick="runDebug()" style="font-size:10px;font-family:monospace;background:transparent;border:1px solid #30343E;color:#6B7080;padding:4px 8px;border-radius:4px;cursor:pointer;">debug</button>
+        <button class="fb-pill" id="fbPill" onclick="openFbModal()">
+          <span class="dot"></span><span id="fbPillText">Firebase</span>
+        </button>
+      </div>
+    </div>
+
+    <div id="debugPanel" style="display:none;background:#1a0a00;border-bottom:1px solid #f0855d44;padding:12px 32px;font-family:monospace;font-size:11px;color:#f0855d;max-height:200px;overflow-y:auto;white-space:pre-wrap;" id="debugOut"></div>
+    <div class="content">
+
+      <!-- ════ DESPESAS ════ -->
+      <div id="panel-despesas" class="panel active">
+        <div class="month-row">
+          <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+          <div class="month-name" id="monthLabel">—</div>
+          <button class="month-btn" onclick="changeMonth(1)">›</button>
+          <button class="btn btn-ghost btn-sm" onclick="copiarFixos()" title="Copia despesas fixas do mês anterior para este mês">↻ Copiar fixos</button>
+          <button class="btn btn-primary btn-sm" onclick="toggleDrawer('drawerDesp')">+ Despesa</button>
+        </div>
+
+        <div id="drawerDesp" class="drawer" style="display:none">
+          <div class="form-grid fg2">
+            <div><label class="f-label">Nome</label><input id="dNome" type="text" placeholder="Netflix, Aluguel…"></div>
+            <div><label class="f-label">Valor R$</label><input id="dValor" type="number" placeholder="0,00" step="0.01"></div>
+          </div>
+          <div class="form-grid fg4">
+            <div>
+              <label class="f-label">Tipo</label>
+              <select id="dTipo" onchange="toggleParc()">
+                <option value="fixo">Fixo mensal</option>
+                <option value="parcelado">Parcelado</option>
+                <option value="unico">Único</option>
+              </select>
+            </div>
+            <div id="dParcWrap" style="opacity:0.4"><label class="f-label">Parcelas</label><input id="dParcelas" type="number" value="1" min="1" max="120"></div>
+            <div><label class="f-label">Início</label><input id="dInicio" type="month"></div>
+            <div id="dTerminoWrap"><label class="f-label">Término <span style="color:var(--faint);font-size:9px">(vazio = sem fim)</span></label><input id="dTermino" type="month" placeholder=""></div>
+          </div>
+          <div class="form-grid fg2">
+            <div>
+              <label class="f-label">Categoria</label>
+              <select id="dCat">
+                <option value="moradia">🏠 Moradia</option>
+                <option value="alimentacao">🍽 Alimentação</option>
+                <option value="transporte">🚗 Transporte</option>
+                <option value="saude">❤ Saúde</option>
+                <option value="lazer">🎮 Lazer</option>
+                <option value="educacao">📚 Educação</option>
+                <option value="outros">📦 Outros</option>
+              </select>
+            </div>
+            <div id="dObsWrap"><label class="f-label">Observação (opcional)</label><input id="dObs" type="text" placeholder="Ex: parcela 3 de 6..."></div>
+          </div>
+          <div class="drawer-footer">
+            <button class="btn btn-ghost btn-sm" onclick="toggleDrawer('drawerDesp')">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="addDespesa()">Confirmar</button>
+          </div>
+        </div>
+
+        <div class="action-row"><span class="section-label">Lançamentos</span></div>
+        <div id="listaDespesas" class="list"></div>
+        <div class="total-line">
+          <span class="tl-label">Total Despesas</span>
+          <span class="tl-val" id="totalDesp" style="color:var(--warn)">R$ 0,00</span>
+        </div>
+      </div>
+
+      <!-- ════ RECEITAS ════ -->
+      <div id="panel-receitas" class="panel">
+        <div class="month-row">
+          <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+          <div class="month-name" id="monthLabelR">—</div>
+          <button class="month-btn" onclick="changeMonth(1)">›</button>
+          <button class="btn btn-primary btn-sm" onclick="toggleDrawer('drawerRec')">+ Receita</button>
+        </div>
+
+        <div id="drawerRec" class="drawer" style="display:none">
+          <div class="form-grid fg2">
+            <div><label class="f-label">Descrição</label><input id="rNome" type="text" placeholder="Salário, Freelance…"></div>
+            <div><label class="f-label">Valor R$</label><input id="rValor" type="number" placeholder="0,00" step="0.01"></div>
+          </div>
+          <div class="drawer-footer">
+            <button class="btn btn-ghost btn-sm" onclick="toggleDrawer('drawerRec')">Cancelar</button>
+            <button class="btn btn-primary btn-sm" onclick="addReceita()">Confirmar</button>
+          </div>
+        </div>
+
+        <div class="action-row"><span class="section-label">Entradas</span></div>
+        <div id="listaReceitas" class="list"></div>
+        <div class="total-line">
+          <span class="tl-label">Total Receitas</span>
+          <span class="tl-val" id="totalRec" style="color:var(--acc)">R$ 0,00</span>
+        </div>
+      </div>
+
+      <!-- ════ RESUMO ════ -->
+      <div id="panel-resumo" class="panel">
+        <div class="month-row">
+          <button class="month-btn" onclick="changeMonth(-1)">‹</button>
+          <div class="month-name" id="monthLabelS">—</div>
+          <button class="month-btn" onclick="changeMonth(1)">›</button>
+        </div>
+        <div class="stat-row">
+          <div class="stat stat-green">
+            <div class="s-label">RECEITAS</div>
+            <div class="s-val" id="sumRec">R$ 0,00</div>
+            <div class="s-sub" id="sumRecSub">0 lançamentos</div>
+          </div>
+          <div class="stat stat-red">
+            <div class="s-label">DESPESAS</div>
+            <div class="s-val" id="sumDesp">R$ 0,00</div>
+            <div class="s-sub" id="sumDespSub">0 lançamentos</div>
+          </div>
+          <div class="stat stat-blue">
+            <div class="s-label">SALDO</div>
+            <div class="s-val" id="sumSaldo">R$ 0,00</div>
+            <div class="s-sub" id="sumSaldoSub">—</div>
+          </div>
+        </div>
+        <div id="balanceCard"></div>
+        <div style="margin-top:24px">
+          <div class="action-row"><span class="section-label">Histórico de meses</span></div>
+          <div id="monthOverview" class="ov-table"></div>
+        </div>
+      </div>
+
+      <!-- ════ POUPANÇA ════ -->
+      <div id="panel-poupanca" class="panel">
+        <div id="quoteBlock" class="quote-block" onclick="nextQuote()">
+          <span class="q-hint">próxima ›</span>
+          <div class="q-text" id="qText">—</div>
+          <div class="q-author" id="qAuthor"></div>
+        </div>
+        <div class="q-counter" id="qCounter"></div>
+
+        <div class="vault-hero">
+          <div class="vh-label">cofre acumulado</div>
+          <div class="vh-amount">R$ <span id="savTotal">0,00</span></div>
+          <div class="prog-wrap"><div class="prog-fill" id="savProg" style="width:0%"></div></div>
+          <div class="prog-labels"><span>R$ 0</span><span id="savGoalLbl">sem meta</span></div>
+          <div class="vh-sub" id="savSub">configure seu plano abaixo</div>
+        </div>
+
+        <div id="planSetup" class="drawer">
+          <div style="font-size:13px;font-weight:500;color:var(--acc);margin-bottom:14px">Configurar plano</div>
+          <div class="form-grid fg3">
+            <div><label class="f-label">Valor por depósito R$</label><input id="planVal" type="number" placeholder="50,00" step="0.01"></div>
+            <div><label class="f-label">Frequência</label>
+              <select id="planFreq"><option value="semanal">Semanal</option><option value="quinzenal">Quinzenal</option><option value="mensal">Mensal</option></select>
+            </div>
+            <div><label class="f-label">Meta R$</label><input id="planGoal" type="number" placeholder="1000,00" step="0.01"></div>
+          </div>
+          <div class="drawer-footer"><button class="btn btn-primary btn-sm" onclick="savePlan()">Salvar plano</button></div>
+        </div>
+
+        <div id="depositPanel" class="drawer" style="display:none">
+          <div style="display:flex;gap:10px;align-items:flex-end">
+            <div style="flex:1"><label class="f-label">Valor R$</label><input id="depVal" type="number" placeholder="50,00" step="0.01"></div>
+            <button class="btn btn-primary" onclick="registerDeposit()">+ Depositar</button>
+            <button class="btn btn-ghost btn-sm" onclick="editPlan()">Editar plano</button>
+          </div>
+          <div id="nextDepInfo" style="font-size:11px;color:var(--muted);margin-top:10px;font-family:var(--mono)"></div>
+        </div>
+
+        <div class="action-row" style="margin-top:4px"><span class="section-label">Histórico de depósitos</span></div>
+        <div id="depLog" class="dep-log"></div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /main -->
+</div><!-- /shell -->
+
+<!-- ── BOTTOM NAV ── -->
+<nav class="bottom-nav" id="bottomNav">
+  <button class="bn-item active" onclick="showPanelMobile('despesas',this)">
+    <span class="bn-icon">↓</span>Despesas
+  </button>
+  <button class="bn-item" onclick="showPanelMobile('receitas',this)">
+    <span class="bn-icon">↑</span>Receitas
+  </button>
+  <button class="bn-item" onclick="showPanelMobile('resumo',this)">
+    <span class="bn-icon">◈</span>Resumo
+  </button>
+  <button class="bn-item" onclick="showPanelMobile('poupanca',this)">
+    <span class="bn-icon">⬡</span>Poupança
+  </button>
+</nav>
+
+<div id="toast"></div>
+<!-- Cole sua firebaseConfig aqui para conectar automaticamente em qualquer dispositivo -->
+<textarea id="hardcodedConfig" style="display:none">const firebaseConfig = {
+  apiKey: "AIzaSyDm9WCY6TU4EMwQdp556eCROmGNZikXjfQ",
+  authDomain: "financas-eduardo.firebaseapp.com",
+  databaseURL: "https://financas-eduardo-default-rtdb.firebaseio.com",
+  projectId: "financas-eduardo",
+  storageBucket: "financas-eduardo.firebasestorage.app",
+  messagingSenderId: "439874834804",
+  appId: "1:439874834804:web:ee0b9827a08856bfb59c21"
+};</textarea>
+
+<!-- ── FIREBASE MODAL ── -->
+<div id="fbModal" class="fb-modal-bg" style="display:none" onclick="if(event.target===this)closeFbModal()">
+  <div class="fb-modal">
+    <h3>Conectar Firebase</h3>
+    <p>Cole o objeto <code style="color:var(--acc2);font-size:11px">firebaseConfig</code> abaixo para ativar a sincronização em nuvem. Pode colar o bloco completo do console do Firebase.</p>
+    <textarea id="fbConfigInput" placeholder="const firebaseConfig = { apiKey: &quot;…&quot;, … }"></textarea>
+    <div class="fb-status" id="fbStatus"></div>
+    <div class="fb-modal-footer">
+      <button class="btn btn-ghost btn-sm" onclick="closeFbModal()">Fechar</button>
+      <button class="btn btn-primary btn-sm" onclick="connectFirebase()">Conectar</button>
+    </div>
+  </div>
+</div>
+
+<script type="module">
+const QUOTES=[
+  {text:"Pague-se primeiro. Antes de pagar qualquer conta, reserve uma parte para você mesmo.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"A diferença entre os ricos e os pobres é que os ricos compram ativos. Os pobres apenas têm despesas.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"Guarde pelo menos dez por cento de tudo que ganhar, pois é para si mesmo.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Uma parte de tudo que você ganha é sua para guardar.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"O ouro vem de bom grado e em quantidade crescente para qualquer homem que guardar não menos de um décimo de seus ganhos.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Faça que o dinheiro trabalhe para você. Não trabalhe por dinheiro.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"Se você não encontrar uma maneira de ganhar dinheiro enquanto dorme, trabalhará até morrer.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"A mente é seu ativo mais poderoso. O que você sabe é o que faz de você rico.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"Ricos pensam 'como posso ter os dois?'. Pobres pensam 'não posso ter os dois'.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Se você não gerencia seu dinheiro, a falta de dinheiro vai te gerenciar.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"A raiz de toda a riqueza vem da mentalidade. Mude sua mentalidade e mude seu mundo financeiro.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Hábitos de pensamento milionário criam resultados milionários.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Ricos focam em oportunidades. Pobres focam em obstáculos.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Gastar dinheiro para mostrar que você tem dinheiro é a maneira mais rápida de não ter mais dinheiro.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Controlar suas finanças é a base de qualquer liberdade real na vida.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Ser rico e ter riqueza são coisas diferentes. Riqueza é o que você não vê.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"O maior risco financeiro é não ter reserva para imprevistos.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"A humildade, o medo e a dúvida continuam sendo as ferramentas financeiras mais subestimadas.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"O mundo pertence a quem tem paciência. Em finanças, tempo é o maior aliado.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Poupança é a diferença entre o seu ego e sua renda.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Independência financeira não significa ser milionário. Significa ter controle do seu tempo.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Evite dívidas de consumo. Elas são a escravidão moderna.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Faça seu tesouro trabalhar para você. Que cada moeda que você poupar seja um servo que trabalha para te enriquecer.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Aprenda a viver com menos do que ganha. Esta é a primeira lei da riqueza.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"O começo da riqueza é um hábito simples: gastar menos do que ganha.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Nenhum homem pode chegar à riqueza sem primeiro dominar a si mesmo.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Invista em você. Sua educação e habilidades são os melhores ativos.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"Os vencedores não têm medo de perder. O fracasso é parte do processo do sucesso.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"Cada centavo poupado é um soldado trabalhando em seu exército financeiro.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Quem controla seu dinheiro, controla sua vida.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Não é o quanto você ganha, mas o quanto você guarda que constrói riqueza.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Dinheiro é apenas uma ferramenta. Que tipo de vida você quer construir?",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"Pessoas que enriquecem raramente o fazem de uma só vez. É resultado de décadas de boas decisões.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"O segredo do sucesso financeiro não é encontrar o melhor investimento, mas o melhor comportamento.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Trabalhe para aprender, não para ganhar dinheiro.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"Procure conselho apenas daqueles que têm conhecimento profundo do que você quer saber.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Um plano financeiro simples executado com consistência supera qualquer estratégia sofisticada.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Dívida boa constrói ativos. Dívida ruim financia estilo de vida.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"A maioria dos problemas financeiros são causados por desejos que superam a disciplina.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Independência financeira é tomar decisões nos seus próprios termos.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Os ricos não trabalham pelo dinheiro; fazem o dinheiro trabalhar por eles.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"Tente poupar dinheiro suficiente para pagar seis meses de suas despesas mensais.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"O dinheiro que você não gasta é melhor do que o dinheiro que você ganha.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Seja generoso. Uma mão cheia de dinheiro seguro demais nunca atrai mais.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Mantenha seus gastos dentro dos seus ganhos. O orçamento é a principal ferramenta de disciplina financeira.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+  {text:"Pessoas ricas têm dinheiro trabalhando para elas. Pessoas pobres trabalham pelo dinheiro.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"O conhecimento financeiro é o maior presente que você pode dar a si mesmo.",author:"Segredo da Mente Milionária — T. Harv Eker"},
+  {text:"A história financeira do mundo é cheia de pessoas que viram outros ficando ricos e ficaram de fora.",author:"Psicologia Financeira — Morgan Housel"},
+  {text:"Quanto mais der, mais receberá. As pessoas que dão primeiro sempre recebem mais.",author:"Pai Rico, Pai Pobre — Robert Kiyosaki"},
+  {text:"Se você quer ser rico, precisa primeiro saber onde seu dinheiro está indo.",author:"O Homem Mais Rico da Babilônia — George Clason"},
+];
+
+let state={currentMonth:null,despesas:{},receitas:{},savings:{plan:null,deposits:[]},quoteIndex:0};
+let fbDB=null,fbRef=null;
+
+const MONTHS=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const catIcons={moradia:'🏠',alimentacao:'🍽',transporte:'🚗',saude:'❤',lazer:'🎮',educacao:'📚',outros:'📦'};
+
+function fmt(n){return 'R$ '+(+n).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,6)}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}
+function monthStr(ym){const[y,m]=ym.split('-');return`${MONTHS[+m-1]} ${y}`}
+
+// INIT
+(function(){
+  const now=new Date();
+  state.currentMonth=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+  document.getElementById('headerDate').textContent=now.toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'});
+  document.getElementById('dInicio').value=state.currentMonth;
+  loadLocal();renderAll();renderQuote();
+  tryAutoConnect();
+})();
+
+function toArr(val){
+  if(!val)return[];
+  if(Array.isArray(val))return val.filter(Boolean);
+  return Object.values(val).filter(Boolean);
+}
+function normDesp(despesas){
+  const out={};
+  for(const[k,list]of Object.entries(despesas||{})){
+    out[k]=toArr(list).map(d=>({...d,cat:d.cat||d.categoria||'outros'}));
+  }
+  return out;
+}
+function normRec(receitas){
+  const out={};
+  for(const[k,list]of Object.entries(receitas||{})){
+    out[k]=toArr(list);
+  }
+  return out;
+}
+function loadLocal(){
+  try{
+    const raw=localStorage.getItem('finvault_v2')||localStorage.getItem('finvault_data');
+    if(raw){const p=JSON.parse(raw);if(p.despesas)p.despesas=normDesp(p.despesas);Object.assign(state,p);}
+  }catch(e){}
+}
+function saveLocal(){localStorage.setItem('finvault_v2',JSON.stringify({despesas:state.despesas,receitas:state.receitas,savings:state.savings,quoteIndex:state.quoteIndex}))}
+function saveData(){
+  saveLocal();
+  if(fbDB&&fbRef){
+    import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js').then(({set})=>{
+      set(fbRef,{despesas:state.despesas,receitas:state.receitas,savings:state.savings}).catch(()=>{});
+    });
+  }
+}
+
+// PANELS
+window.showPanelMobile=function(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.bn-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+  const titles={despesas:'Despesas',receitas:'Receitas',resumo:'Resumo',poupanca:'Poupança'};
+  document.getElementById('panelTitle').textContent=titles[id]||id;
+  renderAll();
+};
+
+window.showPanel=function(id,btn){
+  document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.getElementById('panel-'+id).classList.add('active');
+  btn.classList.add('active');
+  const titles={despesas:'Despesas',receitas:'Receitas',resumo:'Resumo',poupanca:'Poupança'};
+  document.getElementById('panelTitle').textContent=titles[id]||id;
+  renderAll();
+};
+
+// MONTH
+window.changeMonth=function(dir){
+  const[y,m]=state.currentMonth.split('-').map(Number);
+  const d=new Date(y,m-1+dir,1);
+  state.currentMonth=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  renderAll();
+};
+
+// DRAWERS
+window.toggleDrawer=function(id){const el=document.getElementById(id);el.style.display=el.style.display==='none'?'block':'none'};
+window.toggleParc=function(){document.getElementById('dParcWrap').style.opacity=document.getElementById('dTipo').value==='parcelado'?'1':'0.4'};
+
+// DESPESAS
+window.addDespesa=function(){
+  const nome=document.getElementById('dNome').value.trim();
+  const valor=parseFloat(document.getElementById('dValor').value);
+  const tipo=document.getElementById('dTipo').value;
+  const parcelas=parseInt(document.getElementById('dParcelas').value)||1;
+  const inicio=document.getElementById('dInicio').value||state.currentMonth;
+  const termino=document.getElementById('dTermino').value||null;
+  const cat=document.getElementById('dCat').value;
+  const obs=document.getElementById('dObs').value.trim()||null;
+  if(!nome||isNaN(valor)||valor<=0){toast('⚠ Preencha nome e valor');return}
+  if(tipo==='parcelado'){
+    const[y,m]=inicio.split('-').map(Number);
+    // calcula término automaticamente pela quantidade de parcelas
+    const fimAuto=new Date(y,m-1+parcelas-1,1);
+    const terminoFinal=`${fimAuto.getFullYear()}-${String(fimAuto.getMonth()+1).padStart(2,'0')}`;
+    for(let i=0;i<parcelas;i++){
+      const d=new Date(y,m-1+i,1);
+      const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+      if(!state.despesas[key])state.despesas[key]=[];
+      state.despesas[key].push({id:uid(),nome,valor,tipo,parcelas,inicio,termino:terminoFinal,cat,obs,parcelaAtual:i+1});
+    }
+    toast(`✓ ${parcelas}x parcelas adicionadas`);
+  }else{
+    if(!state.despesas[state.currentMonth])state.despesas[state.currentMonth]=[];
+    state.despesas[state.currentMonth].push({id:uid(),nome,valor,tipo,parcelas:1,inicio,termino,cat,obs,parcelaAtual:1});
+    toast('✓ Despesa adicionada');
+  }
+  saveData();renderAll();
+  document.getElementById('dNome').value='';document.getElementById('dValor').value='';
+  document.getElementById('dTermino').value='';document.getElementById('dObs').value='';
+  toggleDrawer('drawerDesp');
+};
+window.removeDespesa=function(key,id){state.despesas[key]=(state.despesas[key]||[]).filter(d=>d.id!==id);saveData();renderAll();toast('Removido')};
+
+// RECEITAS
+window.addReceita=function(){
+  const nome=document.getElementById('rNome').value.trim();
+  const valor=parseFloat(document.getElementById('rValor').value);
+  if(!nome||isNaN(valor)||valor<=0){toast('⚠ Preencha nome e valor');return}
+  if(!state.receitas[state.currentMonth])state.receitas[state.currentMonth]=[];
+  state.receitas[state.currentMonth].push({id:uid(),nome,valor});
+  saveData();renderAll();
+  document.getElementById('rNome').value='';document.getElementById('rValor').value='';
+  toggleDrawer('drawerRec');toast('✓ Receita adicionada');
+};
+window.removeReceita=function(key,id){state.receitas[key]=(state.receitas[key]||[]).filter(r=>r.id!==id);saveData();renderAll();toast('Removido')};
+
+// SAVINGS
+window.savePlan=function(){
+  const value=parseFloat(document.getElementById('planVal').value);
+  const freq=document.getElementById('planFreq').value;
+  const goal=parseFloat(document.getElementById('planGoal').value)||0;
+  if(isNaN(value)||value<=0){toast('⚠ Informe o valor');return}
+  state.savings.plan={value,freq,goal};
+  if(!state.savings.deposits)state.savings.deposits=[];
+  saveData();
+  document.getElementById('planSetup').style.display='none';
+  document.getElementById('depositPanel').style.display='block';
+  renderSavings();toast('✓ Plano configurado');
+};
+window.editPlan=function(){
+  document.getElementById('planSetup').style.display='block';
+  document.getElementById('depositPanel').style.display='none';
+  if(state.savings.plan){
+    document.getElementById('planVal').value=state.savings.plan.value;
+    document.getElementById('planFreq').value=state.savings.plan.freq;
+    document.getElementById('planGoal').value=state.savings.plan.goal||'';
+  }
+};
+window.registerDeposit=function(){
+  const amount=parseFloat(document.getElementById('depVal').value);
+  if(isNaN(amount)||amount<=0){toast('⚠ Informe o valor');return}
+  state.savings.deposits.push({id:uid(),date:new Date().toISOString(),amount});
+  saveData();renderSavings();
+  document.getElementById('depVal').value='';toast('✓ Depósito registrado');
+};
+window.removeDeposit=function(id){
+  state.savings.deposits=(state.savings.deposits||[]).filter(d=>d.id!==id);
+  saveData();renderSavings();toast('Removido');
+};
+
+// RENDER
+function renderAll(){renderLabels();renderDespesas();renderReceitas();renderResumo();renderSavings()}
+
+function renderLabels(){
+  ['monthLabel','monthLabelR','monthLabelS'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(!el)return;
+    const[y,m]=state.currentMonth.split('-');
+    el.innerHTML=`${MONTHS[+m-1]}<small>${y}</small>`;
+  });
+}
+
+function renderDespesas(){
+  const key=state.currentMonth;
+  const list=state.despesas[key]||[];
+  const c=document.getElementById('listaDespesas');
+  if(!list.length){c.innerHTML=`<div class="empty"><div class="e-icon">↓</div><p>Nenhuma despesa em ${MONTHS[+key.split('-')[1]-1]}</p></div>`;
+  }else{
+    c.innerHTML=list.map(d=>`
+      <div class="list-item">
+        <div class="li-line"></div>
+        <div class="li-info">
+          <div class="li-name">${catIcons[d.cat]||'📦'} ${d.nome}</div>
+          <div class="li-meta">${d.tipo==='parcelado'?`<span class="tag tag-blue">${d.parcelaAtual}/${d.parcelas}x</span>`:`<span class="tag tag-red">${d.tipo}</span>`}${d.termino?` <span style="color:#6B7080;font-size:10px">até ${d.termino}</span>`:''} ${d.obs?`<span style="color:#6B7080"> · ${d.obs}</span>`:''}</div>
+        </div>
+        <span class="li-amount">${fmt(d.valor)}</span>
+        <button class="btn btn-danger btn-sm" onclick="removeDespesa('${key}','${d.id}')">✕</button>
+      </div>`).join('');
+  }
+  document.getElementById('totalDesp').textContent=fmt(list.reduce((s,d)=>s+d.valor,0));
+}
+
+function renderReceitas(){
+  const key=state.currentMonth;
+  const list=state.receitas[key]||[];
+  const c=document.getElementById('listaReceitas');
+  if(!list.length){c.innerHTML=`<div class="empty"><div class="e-icon">↑</div><p>Nenhuma receita em ${MONTHS[+key.split('-')[1]-1]}</p></div>`;
+  }else{
+    c.innerHTML=list.map(r=>`
+      <div class="list-item">
+        <div class="li-line income"></div>
+        <div class="li-info">
+          <div class="li-name">${r.nome}</div>
+          <div class="li-meta"><span class="tag tag-green">receita</span></div>
+        </div>
+        <span class="li-amount income">${fmt(r.valor)}</span>
+        <button class="btn btn-danger btn-sm" onclick="removeReceita('${key}','${r.id}')">✕</button>
+      </div>`).join('');
+  }
+  document.getElementById('totalRec').textContent=fmt(list.reduce((s,r)=>s+r.valor,0));
+}
+
+function renderResumo(){
+  const key=state.currentMonth;
+  const desp=(state.despesas[key]||[]).reduce((s,d)=>s+d.valor,0);
+  const rec=(state.receitas[key]||[]).reduce((s,r)=>s+r.valor,0);
+  const saldo=rec-desp;
+  document.getElementById('sumRec').textContent=fmt(rec);
+  document.getElementById('sumDesp').textContent=fmt(desp);
+  document.getElementById('sumSaldo').textContent=fmt(Math.abs(saldo));
+  document.getElementById('sumSaldo').style.color=saldo>=0?'var(--acc)':'var(--warn)';
+  document.getElementById('sumRecSub').textContent=`${(state.receitas[key]||[]).length} lançamentos`;
+  document.getElementById('sumDespSub').textContent=`${(state.despesas[key]||[]).length} lançamentos`;
+  document.getElementById('sumSaldoSub').textContent=saldo>=0?'saldo positivo':'déficit';
+  const bc=document.getElementById('balanceCard');
+  if(desp===0&&rec===0){bc.innerHTML='';return}
+  if(saldo>=0){bc.innerHTML=`<div class="balance-card pos"><span class="bc-icon">↗</span><div><div class="bc-val" style="color:var(--acc)">${fmt(saldo)}</div><div class="bc-msg">Sobrando após quitar todas as despesas do mês</div></div></div>`}
+  else{bc.innerHTML=`<div class="balance-card neg"><span class="bc-icon">↘</span><div><div class="bc-val" style="color:var(--warn)">${fmt(Math.abs(saldo))}</div><div class="bc-msg">Faltam ${fmt(Math.abs(saldo))} para cobrir todas as despesas</div></div></div>`}
+  const all=new Set([...Object.keys(state.despesas),...Object.keys(state.receitas)]);
+  const sorted=[...all].sort().reverse().slice(0,8);
+  const ov=document.getElementById('monthOverview');
+  if(!sorted.length){ov.innerHTML='<div class="empty"><p>Nenhum dado ainda</p></div>';return}
+  ov.innerHTML=sorted.map(mk=>{
+    const d=(state.despesas[mk]||[]).reduce((s,x)=>s+x.valor,0);
+    const r=(state.receitas[mk]||[]).reduce((s,x)=>s+x.valor,0);
+    const s=r-d;
+    return`<div class="ov-row${mk===state.currentMonth?' cur':''}" onclick="state.currentMonth='${mk}';renderAll()">
+      <span class="ov-month">${monthStr(mk)}</span>
+      <div class="ov-nums">
+        <span style="color:var(--acc)">+${fmt(r)}</span>
+        <span style="color:var(--warn)">-${fmt(d)}</span>
+        <span style="color:${s>=0?'var(--acc)':'var(--warn)'}; font-weight:500">${fmt(s)}</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderSavings(){
+  const{plan,deposits=[]}=state.savings;
+  if(plan){
+    document.getElementById('planSetup').style.display='none';
+    document.getElementById('depositPanel').style.display='block';
+  }
+  const total=deposits.reduce((s,d)=>s+d.amount,0);
+  document.getElementById('savTotal').textContent=total.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+  if(plan&&plan.goal>0){
+    const pct=Math.min(100,(total/plan.goal)*100);
+    document.getElementById('savProg').style.width=pct.toFixed(1)+'%';
+    document.getElementById('savGoalLbl').textContent=`meta: ${fmt(plan.goal)}`;
+    document.getElementById('savSub').textContent=`${pct.toFixed(1)}% · ${deposits.length} depósitos · ${plan?.freq||''}`;
+  }else{
+    document.getElementById('savSub').textContent=`${deposits.length} depósitos registrados`;
+  }
+  if(plan){
+    const last=deposits.length?new Date(deposits[deposits.length-1].date):null;
+    if(last){
+      const next=new Date(last);
+      if(plan.freq==='semanal')next.setDate(next.getDate()+7);
+      else if(plan.freq==='quinzenal')next.setDate(next.getDate()+15);
+      else next.setMonth(next.getMonth()+1);
+      document.getElementById('nextDepInfo').textContent=`próximo: ${next.toLocaleDateString('pt-BR')} · ${fmt(plan.value)}`;
+    }else{
+      document.getElementById('nextDepInfo').textContent=`primeiro depósito sugerido: ${fmt(plan.value)}`;
+    }
+  }
+  const log=document.getElementById('depLog');
+  if(!deposits.length){log.innerHTML='<div class="empty"><div class="e-icon">⬡</div><p>Nenhum depósito ainda</p></div>';return}
+  log.innerHTML=[...deposits].reverse().map(d=>`
+    <div class="dep-entry">
+      <div><div style="font-size:12px;color:var(--text)">Depósito</div><div class="dep-date">${new Date(d.date).toLocaleDateString('pt-BR',{weekday:'short',day:'2-digit',month:'short',year:'numeric'})}</div></div>
+      <div style="display:flex;align-items:center;gap:8px"><span class="dep-val">+${fmt(d.amount)}</span><button class="btn btn-danger btn-sm" onclick="removeDeposit('${d.id}')">✕</button></div>
+    </div>`).join('');
+}
+
+// QUOTES
+function renderQuote(){
+  const q=QUOTES[state.quoteIndex%QUOTES.length];
+  document.getElementById('qText').textContent=`"${q.text}"`;
+  document.getElementById('qAuthor').textContent=`— ${q.author}`;
+  document.getElementById('qCounter').textContent=`${(state.quoteIndex%QUOTES.length)+1} / ${QUOTES.length}`;
+}
+window.nextQuote=function(){
+  state.quoteIndex=(state.quoteIndex+1)%QUOTES.length;
+  saveLocal();
+  const b=document.getElementById('quoteBlock');
+  b.style.opacity='0';b.style.transform='translateY(4px)';
+  setTimeout(()=>{renderQuote();b.style.opacity='1';b.style.transform='translateY(0)';b.style.transition='all .2s'},180);
+};
+setInterval(()=>{if(document.getElementById('panel-poupanca').classList.contains('active'))nextQuote()},30000);
+
+// FIREBASE MODAL
+window.openFbModal=function(){document.getElementById('fbModal').style.display='flex'};
+window.closeFbModal=function(){document.getElementById('fbModal').style.display='none'};
+
+window.connectFirebase=async function(){
+  const raw=document.getElementById('fbConfigInput').value.trim();
+  const status=document.getElementById('fbStatus');
+  if(!raw){status.textContent='⚠ Cole a configuração';return}
+  function extractConfig(text){
+    let match=text.match(/firebaseConfig\s*=\s*(\{[\s\S]*?\});/);
+    if(!match)match=text.match(/firebaseConfig\s*=\s*(\{[\s\S]*?\})/);
+    const block=match?match[1]:(text.includes('{')?text.substring(text.indexOf('{'),text.lastIndexOf('}')+1):null);
+    if(!block)return null;
+    try{return(0,eval)('('+block+')')}catch(e){return null}
+  }
+  const config=extractConfig(raw);
+  if(!config||!config.apiKey){status.textContent='❌ Configuração inválida';return}
+  status.textContent='⏳ Conectando…';
+  try{
+    const{initializeApp,getApps}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js');
+    const{getDatabase,ref,onValue,set}=await import('https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js');
+    const app=getApps().length?getApps()[0]:initializeApp(config);
+    fbDB=getDatabase(app);fbRef=ref(fbDB,'finvault/data');
+    onValue(fbRef,snap=>{
+      if(snap.exists()){
+        const d=snap.val();
+        if(d.despesas)state.despesas=normDesp(d.despesas);
+        if(d.receitas)state.receitas=normRec(d.receitas);
+        if(d.savings){
+          const sv=d.savings;
+          if(sv.deposits)sv.deposits=toArr(sv.deposits);
+          state.savings=sv;
+        }
+        saveLocal();renderAll();
+      }
+    });
+    status.textContent='✅ Conectado';
+    const pill=document.getElementById('fbPill');
+    pill.classList.add('connected');
+    document.getElementById('fbPillText').textContent='Sincronizado';
+    localStorage.setItem('finvault_fbconfig',JSON.stringify(config));
+    setTimeout(()=>closeFbModal(),1200);
+  }catch(e){status.textContent='❌ '+e.message}
+};
+
+window.copiarFixos=function(){
+  const[y,m]=state.currentMonth.split('-').map(Number);
+  const prev=new Date(y,m-2,1);
+  const prevKey=`${prev.getFullYear()}-${String(prev.getMonth()+1).padStart(2,'0')}`;
+  const prevList=state.despesas[prevKey]||[];
+  if(!prevList.length){toast('Nenhuma despesa no mês anterior');return}
+
+  // Filtra despesas que devem continuar neste mês:
+  // - tipo "fixo" sem termino → sempre copia
+  // - tipo "fixo" com termino → só copia se currentMonth <= termino
+  // - tipo "unico" → NUNCA copia
+  // - tipo "parcelado" → já criou as entradas na hora do cadastro, não copia
+  const jaExiste=state.despesas[state.currentMonth]||[];
+  const cur=state.currentMonth; // "YYYY-MM"
+
+  const paracopiar=prevList.filter(d=>{
+    if(d.tipo==='unico')return false;
+    if(d.tipo==='parcelado')return false;
+    // fixo: verifica término
+    if(d.termino && d.termino < cur) return false;
+    // já existe neste mês?
+    if(jaExiste.some(e=>e.nome===d.nome&&Math.abs(e.valor-d.valor)<0.01))return false;
+    return true;
+  });
+
+  if(!paracopiar.length){
+    toast('Nenhuma despesa fixa para copiar (todas terminaram ou já existem)');return;
+  }
+  if(!state.despesas[state.currentMonth])state.despesas[state.currentMonth]=[];
+  paracopiar.forEach(d=>{
+    state.despesas[state.currentMonth].push({...d,id:uid(),inicio:cur,parcelaAtual:1});
+  });
+  saveData();renderAll();
+  toast(`✓ ${paracopiar.length} despesas copiadas automaticamente`);
+};
+
+window.runDebug=function(){
+  const panel=document.getElementById('debugPanel');
+  panel.style.display=panel.style.display==='none'?'block':'none';
+  const lines=[];
+  lines.push('=== STATE.DESPESAS ===');
+  lines.push('Chaves: '+JSON.stringify(Object.keys(state.despesas)));
+  Object.entries(state.despesas).forEach(([k,v])=>{
+    lines.push(k+': '+JSON.stringify(v).slice(0,300));
+  });
+  lines.push('');
+  lines.push('=== LOCALSTORAGE ===');
+  ['finvault_data','finvault_v2'].forEach(k=>{
+    const v=localStorage.getItem(k);
+    if(v)lines.push(k+': '+v.slice(0,400));
+    else lines.push(k+': (vazio)');
+  });
+  panel.textContent=lines.join('\n');
+};
+
+async function tryAutoConnect(){
+  // Tenta config salva primeiro
+  const saved=localStorage.getItem('finvault_fbconfig');
+  if(saved){
+    document.getElementById('fbConfigInput').value=saved;
+    await connectFirebase();
+    return;
+  }
+  // Se não tem config salva, verifica se tem config embutida
+  const hardcoded=document.getElementById('hardcodedConfig');
+  if(hardcoded&&hardcoded.value.trim()){
+    document.getElementById('fbConfigInput').value=hardcoded.value.trim();
+    await connectFirebase();
+  }
+}
+</script>
+</body>
+</html>
