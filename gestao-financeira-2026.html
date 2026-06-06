@@ -467,6 +467,16 @@ select option{background:var(--bg2)}
 </nav>
 
 <div id="toast"></div>
+<!-- Cole sua firebaseConfig aqui para conectar automaticamente em qualquer dispositivo -->
+<textarea id="hardcodedConfig" style="display:none">const firebaseConfig = {
+  apiKey: "AIzaSyDm9WCY6TU4EMwQdp556eCROmGNZikXjfQ",
+  authDomain: "financas-eduardo.firebaseapp.com",
+  databaseURL: "https://financas-eduardo-default-rtdb.firebaseio.com",
+  projectId: "financas-eduardo",
+  storageBucket: "financas-eduardo.firebasestorage.app",
+  messagingSenderId: "439874834804",
+  appId: "1:439874834804:web:ee0b9827a08856bfb59c21"
+};</textarea>
 
 <!-- ── FIREBASE MODAL ── -->
 <div id="fbModal" class="fb-modal-bg" style="display:none" onclick="if(event.target===this)closeFbModal()">
@@ -949,10 +959,19 @@ window.runDebug=function(){
 };
 
 async function tryAutoConnect(){
+  // Tenta config salva primeiro
   const saved=localStorage.getItem('finvault_fbconfig');
-  if(!saved)return;
-  document.getElementById('fbConfigInput').value=saved;
-  await connectFirebase();
+  if(saved){
+    document.getElementById('fbConfigInput').value=saved;
+    await connectFirebase();
+    return;
+  }
+  // Se não tem config salva, verifica se tem config embutida
+  const hardcoded=document.getElementById('hardcodedConfig');
+  if(hardcoded&&hardcoded.value.trim()){
+    document.getElementById('fbConfigInput').value=hardcoded.value.trim();
+    await connectFirebase();
+  }
 }
 </script>
 </body>
